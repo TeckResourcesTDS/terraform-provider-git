@@ -45,3 +45,41 @@ provider "git" {
   * this resource seems does ```git commit --allow-empty -m "<commit message>" ``` to allow openning empty pull request in github.
   * this resource doesnt remove the branch it creates.
 
+  * Sample code from previous project factory usage
+  ```
+  resource "git_files" "default_nonmanage" {
+    lifecycle { ignore_changes = all }
+    depends_on   = [github_branch_default.default]
+    for_each     = (length(local.files.nonmanage[github_branch_default.default.branch]) > 0) ? { default = "default" } : {}
+    hostname     = "github.com"
+    organization = var.git.organization.name
+    repository   = github_repository.default.name
+    branch       = { target = github_branch_default.default.branch, source = github_branch_default.default.branch }
+    author       = var.git.git_author
+    dynamic "file" {
+      for_each = local.files.nonmanage[github_branch_default.default.branch]
+      content {
+        content  = file.value.content
+        filepath = file.value.path
+      }
+    }
+  }
+
+  resource "git_files" "default_manage" {
+    depends_on   = [github_branch.default]
+    for_each     = (length(local.files.manage[github_branch_default.default.branch]) > 0) ? local.pull_request : {}
+    hostname     = "github.com"
+    organization = var.git.organization.name
+    repository   = github_repository.default.name
+    branch       = { target = each.value.branch, source = each.key }
+    author       = var.git.git_author
+    dynamic "file" {
+      for_each = local.files.manage[each.key]
+      content {
+        content  = file.value.content
+        filepath = file.value.path
+      }
+    }
+  }
+```
+
